@@ -1,0 +1,62 @@
+.elementor-1147 .elementor-element.elementor-element-8f53ace{--display:flex;--flex-direction:column;--container-widget-width:100%;--container-widget-height:initial;--container-widget-flex-grow:0;--container-widget-align-self:initial;--background-transition:0.3s;--margin-top:0px;--margin-bottom:0px;--margin-left:0px;--margin-right:0px;--padding-top:5em;--padding-bottom:5em;--padding-left:0em;--padding-right:0em;}:root{--page-title-display:none;}@media(min-width:768px){.elementor-1147 .elementor-element.elementor-element-8f53ace{--content-width:1300px;}}/* Start custom CSS for html, class: .elementor-element-606aafb */.container {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  height: 100vh;
+}
+
+.circle {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background-color: #3498db;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  position: relative;
+}
+
+.info {
+  display: none;
+  position: absolute;
+  top: -50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: white;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.circle:hover {
+  transform: scale(1.1);
+}
+
+.circle:hover .info {
+  display: block;
+}
+
+.number {
+  color: white;
+  font-size: 24px;
+}
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(52, 152, 219, 0.7);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(52, 152, 219, 0.7);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(52, 152, 219, 0.7);
+  }
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}/* End custom CSS */
