@@ -68,8 +68,8 @@ transform: translateY(-50%) rotate(320deg);
     display: flex;
     justify-content: center;
     align-items: center;
-    width: 30px;  /* Ajusta este valor según tu diseño */
-    height: 30px; /* Mismo valor que width para crear un círculo perfecto */
+    width: 25px;  /* Ajusta este valor según tu diseño */
+    height: 25px; /* Mismo valor que width para crear un círculo perfecto */
     border-radius: 50%;  /* Hace que el elemento sea un círculo perfecto */
     font-weight: bold;
     position: absolute;
