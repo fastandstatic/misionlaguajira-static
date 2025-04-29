@@ -6,6 +6,7 @@
 
 		init: function() {
 			elementor.hooks.addAction( 'frontend/element_ready/section', JetTricks.elementorSection );
+			elementor.hooks.addAction( 'frontend/element_ready/section', JetTricks.elementorColumn );
 			elementor.hooks.addAction( 'frontend/element_ready/container', JetTricks.elementorSection );
 			elementor.hooks.addAction( 'frontend/element_ready/container', JetTricks.elementorColumn );
 			elementor.hooks.addAction( 'frontend/element_ready/column', JetTricks.elementorColumn );
@@ -28,9 +29,9 @@
 
 					const $content = $( content );
 
-					var $button  = $content.find( '.jet-unfold__button');
+					var $button  = $content.find( '.jet-unfold__button' );
 
-					$button.off('click.jetUnfold');
+					$button.off( 'click.jetUnfold' );
 
 					JetTricks.initWidgetsHandlers( $content );
 					JetTricks.elementorSection( $content );
@@ -39,22 +40,33 @@
 			);
 
 			// Add an action when the Swiper Loop Carousel widget is ready on the frontend
-			elementorFrontend.hooks.addAction('frontend/element_ready/loop-carousel.post', function($scope, $) {
-
-				$(window).on('load', function() {
-
-					var loopCarousel = $scope.find('.swiper'),
-					swiperInstance = loopCarousel.data( 'swiper' ),
-					$button  = $scope.find( '.jet-unfold__button');
-
-					if( swiperInstance && $button ) {
-
-						swiperInstance.on('slideChange', function () {
-							$button.off('click.jetUnfold');
+			var loopCarouselTypes = [
+				'loop-carousel.post',
+				'loop-carousel.product',
+				'loop-carousel.post_taxonomy',
+				'loop-carousel.product_taxonomy'
+			];
+			
+			loopCarouselTypes.forEach( function( carouselType ) {
+				elementorFrontend.hooks.addAction( 'frontend/element_ready/' + carouselType, function( $scope, $ ) {
+					
+					$( window ).on( 'load', function() {
+						var loopCarousel = $scope.find( '.swiper' ),
+							swiperInstance = loopCarousel.data( 'swiper' ),
+							$button = $scope.find( '.jet-unfold__button' );
+						
+						if ( swiperInstance && $button ) {
+				
+							$button.off( 'click.jetUnfold' );
 							JetTricks.initLoopCarouselHandlers( $scope );
-						});
-					}
-				});	
+				
+							swiperInstance.on( 'slideChange', function() {
+								$button.off( 'click.jetUnfold' );
+								JetTricks.initLoopCarouselHandlers( $scope );
+							});
+						}
+					});
+				});
 			});
 		},
 
@@ -85,6 +97,11 @@
 
 				$selector.find( '[data-element_type]' ).each( function() {
 
+					var excludeWidgets = [
+						'jet-woo-product-gallery-slider.default',
+						'accordion.default' 
+					];
+
 					var $this  = $( this ),
 
 					elementType = $this.data( 'element_type' );
@@ -94,7 +111,13 @@
 					}
 
 					if ( 'widget' === elementType ) {
+
 						elementType = $this.data( 'widget_type' );
+						
+						if ( excludeWidgets.includes( elementType ) ) {
+							return;
+						}
+						
 						window.elementorFrontend.hooks.doAction( 'frontend/element_ready/widget', $this, $ );
 					}
 
@@ -143,7 +166,16 @@
 
 			$scope.prepend( '<div id="' + particlesId + '" class="jet-tricks-particles-section__instance"></div>' );
 
-			tsParticles.load( particlesId, particlesJson );
+			// Initialize particles based on library version
+
+			if ( typeof tsParticles !== 'undefined' && tsParticles.load && tsParticles.version && tsParticles.version.startsWith('3.') ) {
+				tsParticles.load({
+					id: particlesId,
+					options: particlesJson
+				});
+			} else if ( typeof tsParticles !== 'undefined' && tsParticles.load ) {
+				tsParticles.load( particlesId, particlesJson );
+			}
 
 		},
 
@@ -168,96 +200,233 @@
 				settings = $target.data( 'jet-settings' );
 
 				if ( $target.hasClass( 'jet-sticky-column' ) ) {
-
 					if ( -1 !== settings['stickyOn'].indexOf( elementorFrontend.getCurrentDeviceMode() ) ) {
-
 						$target.each( function() {
-
 							var $this  = $( this ),
-
-							elementType = $this.data( 'element_type' );
-
-							if ( elementType !== 'container' ){
-
-								stickyInstanceOptions.topSpacing = settings['topSpacing'];
-								stickyInstanceOptions.bottomSpacing = settings['bottomSpacing'];
-
-								imagesLoaded( $parentSection, function() {
-									$target.data( 'stickyColumnInit', true );
-									stickyInstance = new StickySidebar( $target[0], stickyInstanceOptions );
-								} );
-
-								var targetMutation = $target[0],
-									config         = { attributes: true, childList: true, subtree: true };
-
-								var callbackMutation = function( mutationsList, observer ) {
-									for( var mutation of mutationsList ) {
-										if ( 'attributes' === mutation.type ) {
-											$target[0].style.height = 'auto';
-										}
-									}
-								};
-
-								var observer = new MutationObserver( callbackMutation );
-								observer.observe( targetMutation, config );
-
-								$window.on( 'resize.JetTricksStickyColumn orientationchange.JetTricksStickyColumn', JetTricksTools.debounce( 50, resizeDebounce ) );
-
-								MutationObserver = window.MutationObserver || window.WebKitMutationObserver;
-
-								var observer = new MutationObserver( function( mutations ) {
-									if ( stickyInstance ) {
-										mutations.forEach( function(mutation){
-											if (mutation.attributeName === 'class') {
-												setTimeout( function() {
-													stickyInstance.destroy();
-													stickyInstance = new StickySidebar( $target[0], stickyInstanceOptions );
-												}, 100 );
-											}
-										} )
-									}
-								} );
-
-								$observerTarget.each( function(){
-									observer.observe( $( this )[0], {
-										// subtree: true,
-										// childList: true,
-										attributes: true
-									} );
-								} )
-							
-							} else{
-								$('body').addClass('jet-sticky-container');
-								$this.addClass( 'jet-sticky-container-sticky' );
-								$this.css({ 
-									'top': settings['topSpacing'], 
-									'bottom': settings['bottomSpacing']
-								});
+								elementType = $this.data( 'element_type' );
+		
+							if ( settings['behavior'] === 'fixed' ) {
+								initFixedSticky( $this, settings );
+							} else if ( elementType !== 'container' && elementType !== 'section' ) {
+								initSidebarSticky( $this, settings, stickyInstanceOptions );
+							} else if ( settings['behavior'] === 'scroll_until_end' ) {
+								initScrollUntilEndSticky( $this, settings );
+							} else {
+								initDefaultSticky( $this, settings );
 							}
-
 						});
 					}
 				}
+			}
 
-			} else {
+			function initFixedSticky($element, settings) {
+				var offsetTop = parseInt(settings['topSpacing']) || 0;
+				var bottomSpacing = parseInt(settings['bottomSpacing']) || 0;
+				var $window = $(window);
+				var elementId = $element.data('id');
+				var originalOffsetTop = $element.offset().top;
+				var originalHeight = $element.outerHeight();
+			
+				var $allStickyElements = $('.jet-sticky-column').filter(function() {
+					var $this = $(this);
+					var elementSettings = $this.data('jet-settings');
 
-				return false;
+					return elementSettings && elementSettings.stickyOn.indexOf(elementorFrontend.getCurrentDeviceMode()) !== -1;
+				});
 
-				// settings = JetTricks.columnEditorSettings( columnId );
+				var currentIndex = $allStickyElements.index($element);
+				var $nextSticky = currentIndex + 1 < $allStickyElements.length ? $allStickyElements.eq(currentIndex + 1) : null;
+				var $stopper = null;
+				if ($nextSticky) {
+					$stopper = $nextSticky.closest('.elementor-top-section, .e-parent');
+					if (!$stopper.length) {
+						$stopper = $nextSticky;
+					}
+				}
+			
+				const $placeholder = $('<div></div>')
+					.addClass('jet-sticky-placeholder')
+					.css({
+						display: 'none',
+						height: originalHeight,
+						width: $element.outerWidth(),
+						visibility: 'hidden'
+					});
+			
+				$element.before($placeholder);				
+			
+				function enableSticky() {
+					$placeholder.show();
+					$element.addClass('jet-sticky-container--stuck');
+			
+					var stopperTop = $stopper?.offset()?.top;
+					var stopPoint = stopperTop ? (stopperTop - $element.outerHeight() - offsetTop - bottomSpacing) : null;
+					var diff = 0;
+			
+					if (stopPoint && stopPoint < $window.scrollTop()) {
+						diff = (stopPoint - $window.scrollTop());
+					}
+			
+					$element.css({
+						position: 'fixed',
+						top: diff + 'px',
+						transform: `translateY(${offsetTop}px)`,
+						left: $placeholder.offset().left + 'px',
+						width: $placeholder.outerWidth() + 'px'
+					});
+				}
+			
+				function disableSticky() {
+					$placeholder.hide();
+					$element.removeClass('jet-sticky-container--stuck');
+			
+					$element.css({
+						position: '',
+						top: '',
+						transform: '',
+						left: '',
+						width: ''
+					});
+				}
+			
+				function onScroll() {
+					var scrollTop = $window.scrollTop();
+					if (scrollTop >= originalOffsetTop) {
+						enableSticky();
+					} else {
+						disableSticky();
+					}
+				}
+			
+				function onResize() {
+					originalOffsetTop = $placeholder.offset().top;
+					originalHeight = $element.outerHeight();
+			
+					$placeholder.css({
+						height: originalHeight,
+						width: $element.outerWidth()
+					});
+			
+					onScroll();
+				}
+			
+				let ticking = false;
+				$window.on('scroll.jetStickyHeader-' + elementId, function() {
+					if (!ticking) {
+						requestAnimationFrame(function() {
+							onScroll();
+							ticking = false;
+						});
+						ticking = true;
+					}
+				});
+			
+				$window.on('resize.jetStickyHeader-' + elementId, JetTricksTools.debounce(100, onResize));
+				onScroll();
+			
+				$window.on('resize.jetStickyHeader-' + elementId, JetTricksTools.debounce(100, function() {
+					if (-1 === settings['stickyOn'].indexOf(elementorFrontend.getCurrentDeviceMode())) {
+						cleanupSticky($element, $placeholder, elementId);
+					}
+				}));
+			}
+			
+			function cleanupSticky( $element, $placeholder, elementId ) {
+				$placeholder.remove();
+				$element.css({
+					position: '',
+					top: '',
+					transform: '',
+					left: '',
+					width: '',
+					zIndex: '',
+					transition: '',
+					willChange: ''
+				});
+				$element.removeClass('jet-sticky-container--stuck');
+				$window.off('scroll.jetStickyHeader-' + elementId);
+				$window.off('resize.jetStickyHeader-' + elementId);
+			}
 
-				// if ( 'true' === settings['sticky'] ) {
-				// 	$target.addClass( 'jet-sticky-column' );
+			function initSidebarSticky( $element, settings, options ) {
+				options.topSpacing = settings['topSpacing'];
+				options.bottomSpacing = settings['bottomSpacing'];
 
-				// 	if ( -1 !== settings['stickyOn'].indexOf( elementorFrontend.getCurrentDeviceMode() ) ) {
-				// 		stickyInstanceOptions.topSpacing = settings['topSpacing'];
-				// 		stickyInstanceOptions.bottomSpacing = settings['bottomSpacing'];
+				imagesLoaded( $parentSection, function() {
+					$target.data( 'stickyColumnInit', true );
+					stickyInstance = new StickySidebar( $target[0], options );
+				});
 
-				// 		$target.data( 'stickyColumnInit', true );
-				// 		stickyInstance = new StickySidebar( $target[0], stickyInstanceOptions );
+				var targetMutation = $target[0],
+					config = { attributes: true, childList: true, subtree: true };
 
-				// 		$window.on( 'resize.JetTricksStickyColumn orientationchange.JetTricksStickyColumn', JetTricksTools.debounce( 50, resizeDebounce ) );
-				// 	}
-				// }
+				var observer = new MutationObserver( function( mutations ) {
+					for( var mutation of mutations ) {
+						if ( 'attributes' === mutation.type ) {
+							$target[0].style.height = 'auto';
+						}
+					}
+				});
+
+				observer.observe( targetMutation, config );
+
+				$window.on( 'resize.JetTricksStickyColumn orientationchange.JetTricksStickyColumn', 
+					JetTricksTools.debounce( 50, resizeDebounce ) );
+
+				var observer = new MutationObserver( function( mutations ) {
+					if ( stickyInstance ) {
+						mutations.forEach( function(mutation){
+							if (mutation.attributeName === 'class') {
+								setTimeout( function() {
+									stickyInstance.destroy();
+									stickyInstance = new StickySidebar( $target[0], options );
+								}, 100 );
+							}
+						});
+					}
+				});
+
+				$observerTarget.each( function(){
+					observer.observe( $( this )[0], {
+						attributes: true
+					});
+				});
+			}
+
+			function initScrollUntilEndSticky( $element, settings ) {
+				const stickyHeight = $element.outerHeight();
+				const stickyContentBottom = $element.offset().top + stickyHeight;
+				const stickyViewportOffset = $window.height() - stickyHeight - settings['bottomSpacing'];
+
+				$('body').addClass('jet-sticky-container');
+
+				$window.on( 'scroll.jetSticky', function () {
+					const scrollPosition = $window.scrollTop();
+
+					if ( scrollPosition + $window.height() >= stickyContentBottom ) {
+						$element.css({
+							position: 'sticky',
+							top: stickyViewportOffset + 'px',
+							bottom: 'auto',
+							left: 'auto',
+							zIndex: settings['zIndex'],
+						});
+					}
+				});
+
+				$observerTarget.on( 'destroy.jetSticky', function () {
+					$window.off( 'scroll.jetSticky' );
+					$('body').removeClass('jet-sticky-container');
+				});
+			}
+
+			function initDefaultSticky( $element, settings ) {
+				$('body').addClass('jet-sticky-container');
+				$element.addClass( 'jet-sticky-container-sticky' );
+				$element.css({ 
+					'top': settings['topSpacing'], 
+					'bottom': settings['bottomSpacing']
+				});
 			}
 
 			function resizeDebounce() {
@@ -266,7 +435,6 @@
 					isInit            = $target.data( 'stickyColumnInit' );
 
 				if ( -1 !== availableDevices.indexOf( currentDeviceMode ) ) {
-
 					if ( ! isInit ) {
 						$target.data( 'stickyColumnInit', true );
 						stickyInstance = new StickySidebar( $target[0], stickyInstanceOptions );
@@ -277,7 +445,6 @@
 					stickyInstance.destroy();
 				}
 			}
-
 		},
 
 		elementorWidget: function( $scope ) {
@@ -364,7 +531,8 @@
 				autoHideTime           = settings['autoHideTime'] && 0 != settings['autoHideTime']['size'] ? settings['autoHideTime']['size'] : 5,
 				hideOutsideClick       = settings['hideOutsideClick'] || false,
 				autoHideTrigger,
-				activeBreakpoints      = elementor.config.responsive.activeBreakpoints;
+				activeBreakpoints      = elementor.config.responsive.activeBreakpoints,
+				initialLoaded          = false;
 
 			maskBreakpointsHeights['desktop']    = [];
 			maskBreakpointsHeights['widescreen'] = [];
@@ -397,9 +565,16 @@
 				} )
 			}
 
-			$target.one('transitionend webkitTransitionEnd oTransitionEnd', onLoaded );
+			$target.one('transitionend webkitTransitionEnd oTransitionEnd', function() {
+				if ( !initialLoaded ) {
+					onLoaded();
+					initialLoaded = true;
+				}
+			});
 
 			function onLoaded() {
+				initialLoaded = true;
+
 				var deviceHeight = getDeviceHeight();
 
 				heightCalc = +deviceHeight + maskHeightAdv;
@@ -437,6 +612,7 @@
 			}
 
 			$( window ).on( 'resize.jetWidgetUnfold orientationchange.jetWidgetUnfold', JetTricksTools.debounce( 50, function(){
+				initialLoaded = false;
 				onLoaded();
 			} ) );
 
@@ -518,9 +694,40 @@
 			} );
 
 			function getDeviceHeight() {
-				var deviceMode = elementor.getCurrentDeviceMode();
+				let device = elementorFrontend.getCurrentDeviceMode();
+				let heightSettings;
 
-				return maskBreakpointsHeights[deviceMode]['maskHeight'];
+				switch ( device ) {
+
+					case 'mobile':
+						heightSettings = settings.mask_height_mobile;
+						break;
+
+					case 'tablet':
+						heightSettings = settings.mask_height_tablet;
+						break;
+
+					default:
+						heightSettings = settings.mask_height;
+
+				}
+
+				if ( ! heightSettings || ! heightSettings.size || ! heightSettings.unit ) {
+					heightSettings = settings.mask_height;
+				}
+
+				switch ( heightSettings.unit ) {
+
+					case 'vh':
+						return ( window.innerHeight * heightSettings.size ) / 100;
+
+					case '%':
+						let parentHeight = $contentInner.parent().height();
+						return ( parentHeight * heightSettings.size ) / 100;
+
+					default:
+						return heightSettings.size;
+				}
 			}
 		},
 
@@ -539,6 +746,7 @@
 				var $this          = $( this ),
 					horizontal     = $this.data( 'horizontal-position' ),
 					vertical       = $this.data( 'vertical-position' ),
+					tooltipWidth   = $this.data( 'tooltip-width' ) || null,
 					itemSelector   = $this[0],
 					options        = {};
 
@@ -552,6 +760,7 @@
 				}
 
 				options = {
+					content: $this.data('tippy-content'),
 					arrow: settings['tooltipArrow'] ? true : false,
 					placement: settings['tooltipPlacement'],
 					trigger: settings['tooltipTrigger'],
@@ -560,10 +769,15 @@
 					maxWidth: 'none',
 					offset: [0, settings['tooltipDistance']['size']],
 					allowHTML: true,
-					onShow() {
+					onShow( instance ) {
 						$( itemSelector ).addClass( itemActiveClass );
+
+						if ( tooltipWidth ) {
+							instance.popper.querySelector( '.tippy-box' ).style.width = tooltipWidth;
+						}
+
 					},
-					onHidden() {
+					onHidden( instance ) {
 						$( itemSelector ).removeClass( itemActiveClass );
 					}
 				}
@@ -661,31 +875,34 @@
 
 		widgetEditorSettings: function( widgetId ) {
 			var editorElements = null,
-				widgetData     = {};
-
-			if ( ! window.elementor.hasOwnProperty( 'elements' ) ) {
+				widgetData = {};
+		
+			if ( !window.elementor.hasOwnProperty( 'elements' ) || !window.elementor.elements.models ) {
 				return false;
 			}
-
+		
 			editorElements = window.elementor.elements;
-
-			if ( ! editorElements.models ) {
-				return false;
-			}
-
-			$.each( editorElements.models, function( index, obj ) {
-
-				$.each( obj.attributes.elements.models, function( index, obj ) {
-
-					$.each( obj.attributes.elements.models, function( index, obj ) {
-						if ( widgetId == obj.id ) {
-							widgetData = obj.attributes.settings.attributes;
+		
+			function findWidgetById( models, widgetId ) {
+				let foundData = null;
+		
+				$.each( models, function( index, obj ) {
+					if ( obj.id === widgetId ) {
+						foundData = obj.attributes.settings.attributes;
+						return false;
+					}
+					if ( obj.attributes.elements && obj.attributes.elements.models ) {
+						foundData = findWidgetById( obj.attributes.elements.models, widgetId );
+						if ( foundData ) {
+							return false;
 						}
-					} );
-
-				} );
-
-			} );
+					}
+				});
+		
+				return foundData;
+			}
+		
+			widgetData = findWidgetById( editorElements.models, widgetId ) || {};
 
 			return {
 				'speed': widgetData['jet_tricks_widget_parallax_speed'] || { 'size': 50, 'unit': '%'},
@@ -749,6 +966,7 @@
 					if ( ! settings.showall ) {
 						if ( ! sectionsData[ section ]['visible'] ) {
 							sectionsData[ section ]['visible'] = true;
+							$section.css('height', $section[0].scrollHeight + 'px');
 							$section.addClass( 'view-more-visible' );
 							$section.addClass( 'jet-tricks-' + settings['effect'] + '-effect' );
 
@@ -756,6 +974,7 @@
 						}
 					} else {
 						sectionsData[ section ]['visible'] = true;
+						$section.css('height', $section[0].scrollHeight + 'px');
 						$section.addClass( 'view-more-visible' );
 						$section.addClass( 'jet-tricks-' + settings['effect'] + '-effect' );
 					}
@@ -786,6 +1005,7 @@
 							if ( ! settings.showall ) {
 								if ( ! sectionsData[ section ]['visible'] ) {
 									sectionsData[ section ]['visible'] = true;
+									$section.css('height', $section[0].scrollHeight + 'px');
 									$section.addClass( 'view-more-visible' );
 									$section.addClass( 'jet-tricks-' + settings['effect'] + '-effect' );
 
@@ -793,6 +1013,7 @@
 								}
 							} else {
 								sectionsData[ section ]['visible'] = true;
+								$section.css('height', $section[0].scrollHeight + 'px');
 								$section.addClass( 'view-more-visible' );
 								$section.addClass( 'jet-tricks-' + settings['effect'] + '-effect' );
 							}
@@ -841,7 +1062,7 @@
 	 */
 	window.jetWidgetParallax = function( $scope ) {
 		var self         = this,
-			$target      = $( '> .elementor-widget-container', $scope ),
+			$target      = $scope,
 			$section     = $scope.closest( '.elementor-top-section' ),
 			widgetId     = $scope.data('id'),
 			settings     = {},
@@ -1011,7 +1232,8 @@
 				{
 					content: $scope.find( '.jet-tooltip-widget__content' )[0].innerHTML,
 					allowHTML: true,
-					appendTo: widgetSelector,
+					//appendTo: widgetSelector,
+					appendTo: editMode ? document.body : widgetSelector,
 					arrow: settings['tooltipArrow'] ? true : false,
 					placement: settings['tooltipPlacement'],
 					offset: [ settings['xOffset'], settings['yOffset'] ],
@@ -1021,6 +1243,14 @@
 					zIndex: settings['zIndex'],
 					maxWidth: 'none',
 					delay: settings['delay']['size'] ? settings['delay']['size'] : 0,
+					onCreate: function (instance) {
+						if ( editMode ) {
+							var dataId = tooltipSelector.getAttribute('data-id');
+							if ( dataId ) {
+								instance.popper.classList.add( 'tippy-' + dataId );
+							}
+						}
+					}
 				}
 			);
 
@@ -1030,5 +1260,5 @@
 
 		};
 	};
-
+	
 }( jQuery, window.elementorFrontend ) );
