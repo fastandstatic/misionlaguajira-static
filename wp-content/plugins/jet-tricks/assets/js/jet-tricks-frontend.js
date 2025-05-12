@@ -646,16 +646,21 @@
 					$buttonIcon.html( foldIcon );
 					$buttonText.html( foldText );
 
-					anime( {
-						targets: $mask[0],
-						height: contentHeight,
-						duration: unfoldDuration['size'],
-						easing: unfoldEasing,
-						complete: function( anim ) {
-							// Recalculate listing masonry.
-							$( document ).trigger( 'jet-engine/listing/recalculate-masonry' );
-						}
-					} );
+					// Force recalculation of content height after state change
+					setTimeout(function() {
+						contentHeight = $contentInner.outerHeight();
+						
+						anime( {
+							targets: $mask[0],
+							height: contentHeight,
+							duration: unfoldDuration['size'],
+							easing: unfoldEasing,
+							complete: function( anim ) {
+								// Recalculate listing masonry.
+								$( document ).trigger( 'jet-engine/listing/recalculate-masonry' );
+							}
+						} );
+					}, 0);
 
 					if ( 'true' === autoHide ) {
 						autoHideTrigger = setTimeout( function() {
@@ -769,6 +774,7 @@
 					maxWidth: 'none',
 					offset: [0, settings['tooltipDistance']['size']],
 					allowHTML: true,
+					interactive: settings['tooltipInteractive'] ? true : false,
 					onShow( instance ) {
 						$( itemSelector ).addClass( itemActiveClass );
 
